@@ -1,0 +1,88 @@
+<!doctype html>
+<head></head>
+<style>
+.chat {
+    border: 1px outset black;
+    background-color: lightgray;    
+    text-align: left;
+}
+</style>
+<body onload="onLoadChat()">
+    <p id='msg'>SSChat page</p>
+    <button id='logout' onclick="logout()">Logout</button>
+    <form method="post" id="chatform">
+        <input type="text" id="msg" name="msg" value="">
+        <input type="button" value="Send" onclick="onSend()"/>
+    </form>  
+    <div id="messages" class="chat"></div>  
+</body>
+<script>
+let chatConnection;
+
+function getCookie(name) {
+    try {
+        let cookie = document.cookie.split("; ").find((arg) => {return arg.split("=")[0] == name});
+        return cookie.split("=")[1];
+    } catch (error) {
+        return '';
+    }    
+}
+
+function onSend() {
+    let msg = document.getElementById("chatform").elements["msg"].value;
+    let user = getCookie("user");
+    let userMessage = `@${user}: ${msg}`;
+    // alert(userMessage);
+    chatConnection.send(userMessage);
+}
+
+async function onLoadChat() {
+    // verifyToken
+    loadChatMessages();
+    setupChatConnection();
+}
+
+async function loadChatMessages() {
+    for (let i = 0; i < 5; i++) {
+        let messageElem = document.createElement('div');
+        messageElem.textContent = "test msg line" + i;
+        document.getElementById('messages').prepend(messageElem);
+    }
+    // await fetch
+    
+    // fetch msg list
+}
+
+function setupChatConnection() {
+    const url = 'ws://localhost:5001';
+    chatConnection = new WebSocket(url);
+
+    chatConnection.addEventListener("open", () => {
+        // chatConnection.send("connected...");
+    });
+
+    chatConnection.addEventListener("error", (error) => {
+        alert(`WebSocket error: ${error}`)
+    });
+
+    // VERY STRAANGE, NOT WORKING!!!!!!!!!!
+    // chatConnection.addEventListener("message", (event) => {
+    //     let messageElem = document.createElement('div');
+    //     messageElem.textContent = e.data;
+    //     document.getElementById('messages').prepend(messageElem);
+    //     alert(e.data)
+    // });
+    chatConnection.onmessage = (e) => {
+        let messageElem = document.createElement('div');
+        messageElem.textContent = e.data;
+        document.getElementById('messages').prepend(messageElem);
+        // alert(e.data)
+    }
+  
+}
+
+function logout() {
+    alert("logout");
+}
+</script>
+</html>

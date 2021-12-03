@@ -1,0 +1,47 @@
+<!doctype html>
+<head></head>
+<body>
+    <p id='msg'>SSChat Login page</p>
+    <form id="loginform">
+        <label for="username">Username:</label><br>
+        <input type="text" id="username" name="username" value=""><br>
+        <label for="desc">Password:</label><br>
+        <input type="password" id="password" name="password" value=""><br>
+        <input type="button" value="Login" onclick="loginChat()"/>
+    </form>
+</body>  
+<script>
+function getEncryptionKey(cookieName) {
+    // TODO: get key via cookie or fetch
+}
+function encryptPassword(password) {
+    // let publicKey = getEncryptionKey();
+    // TODO: encryption
+    return password;
+}
+async function loginChat() {
+    
+
+    let user = document.getElementById("loginform").elements["username"].value;
+    let password = document.getElementById("loginform").elements["password"].value;
+
+    let pswdEncrypted = encryptPassword(password);
+    let body = JSON.stringify({
+            username: user,
+            password: pswdEncrypted
+        });
+
+    let options = {
+        method: 'POST',
+        body: body
+    };
+    let response = await fetch('http://localhost:5000', options);
+    let result = await response.text();
+    if (result) {
+        window.location.href = result;
+    } else {
+        alert("Login failed. Try again.");
+    }
+}
+</script>  
+</html>
