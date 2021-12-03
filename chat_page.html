@@ -43,14 +43,14 @@ async function onLoadChat() {
 }
 
 async function loadChatMessages() {
-    for (let i = 0; i < 5; i++) {
+    let response = await fetch('http://localhost:5000/chat/messages.txt');
+    let messages = await response.text();
+    for (const msg of messages.split('\n')) {
+        // alert(msg);
         let messageElem = document.createElement('div');
-        messageElem.textContent = "test msg line" + i;
+        messageElem.textContent = msg;
         document.getElementById('messages').prepend(messageElem);
     }
-    // await fetch
-    
-    // fetch msg list
 }
 
 function setupChatConnection() {

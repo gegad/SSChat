@@ -67,6 +67,11 @@ app.get('/chat', (request:Request, response: Response) => {
     // response.redirect('/');
 })
 
+// GET MESSAGES
+app.get('/chat/messages.txt',  (request:Request, response: Response) => {
+    response.sendFile(path.join(__dirname + '/messages.txt'));
+})
+
 // app.get('/chat/ws', (request: Request, response: Response) => {
 //     console.log("get /chat/ws");
 //     wsChatServer.handleUpgrade(request, response.socket, Buffer.alloc(0), onConnection);
