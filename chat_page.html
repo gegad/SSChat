@@ -32,12 +32,11 @@ function onSend() {
     let msg = document.getElementById("chatform").elements["msg"].value;
     let user = getCookie("user");
     let userMessage = `@${user}: ${msg}`;
-    // alert(userMessage);
+    alert(user);
     chatConnection.send(userMessage);
 }
 
 async function onLoadChat() {
-    // verifyToken
     loadChatMessages();
     setupChatConnection();
 }
