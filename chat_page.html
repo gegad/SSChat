@@ -30,10 +30,7 @@ function getCookie(name) {
 
 function onSend() {
     let msg = document.getElementById("chatform").elements["msg"].value;
-    let user = getCookie("user");
-    let userMessage = `@${user}: ${msg}`;
-    alert(user);
-    chatConnection.send(userMessage);
+    chatConnection.send(msg);
 }
 
 async function onLoadChat() {
@@ -53,12 +50,20 @@ async function loadChatMessages() {
 }
 
 function setupChatConnection() {
-    const url = 'ws://localhost:5001';
+    const urlParams = new URLSearchParams();
+    urlParams.set('token', getCookie("token"));
+    let url = 'ws://localhost:5001/?' + urlParams.toString();
+
     chatConnection = new WebSocket(url);
 
     chatConnection.addEventListener("open", () => {
         // chatConnection.send("connected...");
     });
+
+    
+    // chatConnection.addEventListener("close", () => {
+    //     alert("closed ws");
+    // });
 
     chatConnection.addEventListener("error", (error) => {
         alert(`WebSocket error: ${error}`)
@@ -80,8 +85,15 @@ function setupChatConnection() {
   
 }
 
-function logout() {
-    alert("logout");
+async function logout() {
+    let response = await fetch('http://localhost:5000/logout');
+    let result = await response.text();
+    if (result) {
+        chatConnection.close();
+        window.location.href = result;
+    } else {
+        alert("Logout failed. Try again.");
+    }
 }
 </script>
 </html>

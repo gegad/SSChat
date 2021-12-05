@@ -10,6 +10,7 @@ const path = require('path');
 const dotenv = require('dotenv');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const url = require('url');
 
 const database = require('./database');
 
@@ -32,13 +33,13 @@ app.get('/', (request: Request, response: Response) => {
 })
 
 // GET LOGIN
-app.get('/login', (request: Request, response: Response) => {
+app.get('/login', async (request: Request, response: Response) => {
     console.log("get /login");
     let token: string = request.cookies.token;
-    let user: string = request.cookies.user;
-    if (user && token && verifyToken(user, token)) {
+    if (token && await verifyToken(token)) {
         response.redirect('/chat')
     } else {
+        response.clearCookie('token');
         response.sendFile(path.join(__dirname + '/login_page.html'));
     }
     
@@ -56,8 +57,7 @@ app.post('/login', (request:Request, response: Response) => {
         let authUser: string | null = await authenticateUser(body);
         if (authUser) {
             let token: string = generateToken(authUser);            
-            response.cookie('token', token, {httpOnly: true});
-            response.cookie('user', authUser);
+            response.cookie('token', token);
             response.send("http://localhost:5000/chat")
         } else {
             response.end();
@@ -67,15 +67,15 @@ app.post('/login', (request:Request, response: Response) => {
 
 
 // GET CHAT
-app.get('/chat', (request:Request, response: Response) => {
+app.get('/chat', async (request:Request, response: Response) => {
     console.log("get /chat");
     response.statusCode = 200;
 
     let token: string = request.cookies.token;
-    let user: string = request.cookies.user;
-    if (user && token && verifyToken(user, token)) {
+    if (token && await verifyToken(token)) {
         response.sendFile(path.join(__dirname + '/chat_page.html'));
     } else {
+        response.clearCookie('token');
         response.redirect('/login');
     }
 })
@@ -88,6 +88,13 @@ app.listen(5000);
 const db = database.connect();
 
 
+// GET LOGOUT
+app.get('/logout', (request: Request, response: Response) => {
+    console.log("get /logout");
+    response.clearCookie('token');
+    response.send("http://localhost:5000/login")  
+})
+
 // WEB SOCKET
 
 // app.get('/chat/ws', (request: Request, response: Response) => {
@@ -99,16 +106,21 @@ wsChatServer.on('connection', onConnection);
 
 const connectedUsers = new Set();
 
-function onConnection(ws: typeof webSocket) {
+async function onConnection(ws: typeof webSocket, req: Request) {
+    let user: string;
 
-    connectedUsers.add(ws);
+    let token = url.parse(req.url, true).query?.token;
+    if(token && await verifyToken(token)) {
+        user = jwt.verify(token, process.env.TOKEN_KEY).username;
+        connectedUsers.add(ws);
+    } else {
+        ws.disconnect();
+    }
 
     ws.on('message', function(message: string) {
-        console.log("rcv: " + message);
-        connectedUsers.forEach((conn: typeof webSocket) => {
-            console.log("send: " + message);
-            conn.send("" + message)});
-        fs.writeFile('./messages.txt', message + '\n', { flag: 'a+' }, (err: Error) => { 
+        let formattedMsg = `@${user}: ${message}\n`;
+        connectedUsers.forEach((conn: typeof webSocket) => {conn.send(formattedMsg)});
+        fs.writeFile('./messages.txt', formattedMsg, { flag: 'a+' }, (err: Error) => { 
             if (err) {
                 console.log(err)
             }
@@ -128,19 +140,18 @@ type TokenData = {
 }
 
 function generateToken(username: string): string {
-    console.log('generateToken: key = ' + process.env.TOKEN_KEY);
     let token =  jwt.sign({username: username}, process.env.TOKEN_KEY, { expiresIn: '2h' });
     database.updateUserToken(db, username, token);
-    // let token = 'testtoken';
     return token;
 }
 
-function verifyToken(user: string, token: string): boolean {
+async function verifyToken(token: string) {
     try {
         let decoded: TokenData = jwt.verify(token, process.env.TOKEN_KEY);
-        return decoded.username == user;
+        let dbtoken = await database.getUserData(db, decoded.username, 'token');
+        return dbtoken == token;
     } catch (err) {
-        console.log(err);
+        console.log("token verification failed");
         return false;
     }
 }
@@ -148,11 +159,8 @@ function verifyToken(user: string, token: string): boolean {
 async function authenticateUser(data: string) {
     let username: string = JSON.parse(data).username;
     let password: string = JSON.parse(data).password;
-    console.log(`user: ${username}`);
-    console.log(`password: ${password}`);
     
     let hash = await database.getUserData(db, username, 'passwordhash');
-    console.log('authenticateUser: hash = ' + hash);
     if (hash && await bcrypt.compare(password, hash)) {
         return username;
     }
